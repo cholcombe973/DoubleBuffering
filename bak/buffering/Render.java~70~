@@ -1,0 +1,97 @@
+package buffering;
+
+import java.awt.*;
+import java.awt.image.*;
+import javax.swing.*;
+import java.text.*;
+import java.awt.font.TextAttribute;
+
+public class Render extends Thread {
+  private int mX,mY;
+  private boolean run = true;
+  private DoubleBuffer drawFrame;
+  private Image fadeInImage;
+  private final int TRAIL = 10;
+  private MoveBuff[] moves= new MoveBuff[TRAIL];
+  private GraphicsDevice screen;
+  //private boolean done = false;
+
+  public Render(BufferStrategy buffer,DoubleBuffer f,Image i,GraphicsDevice screen){
+    drawFrame = f;
+    fadeInImage = i;
+    this.screen = screen;
+    fillMoveBuff();
+  }
+  private void fillMoveBuff(){
+    for(int x = 0; x < TRAIL; x++){
+      moves[x] = new MoveBuff();
+      if(0==x){
+        moves[x].pt.x = drawFrame.getCursorPosx();
+        moves[x].pt.y = drawFrame.getCursorPosy();
+        moves[x].alpha = (double).5 / (double)TRAIL;
+      }
+      else{
+        moves[x].pt.x = moves[0].pt.x;
+        moves[x].pt.y = moves[0].pt.y;
+        moves[x].alpha = (double)(TRAIL-1-x) / (double)TRAIL;
+      }
+    }
+  }
+  public void run(){
+    int w = screen.getDisplayMode().getWidth();
+    int h = screen.getDisplayMode().getHeight();
+//    AttributedString as = new AttributedString("Alexa Is Awesome");
+//    Font serifFont = new Font("Serif",Font.PLAIN,40);
+//    as.addAttribute(TextAttribute.FONT,serifFont);
+    while(run){
+      Graphics g = drawFrame.getBufferStrategy().getDrawGraphics();
+      Graphics2D g2 = (Graphics2D)g;
+      g2.setColor(drawFrame.getBackground());
+      g2.fillRect(0, 0, w, h);
+      for(int x=TRAIL-1; x >=0;x--){
+        Composite c = AlphaComposite.getInstance(AlphaComposite.SRC_OVER,(float)moves[x].alpha);
+        g2.setComposite(c);
+        g2.drawImage(fadeInImage,moves[x].pt.x - 50,moves[x].pt.y-50,null);
+//          g2.setColor(Color.black);
+//          g2.drawString(as.getIterator(),moves[0].pt.x,moves[0].pt.y);
+      }
+      g2.dispose();
+      drawFrame.getBufferStrategy().show();
+    }
+    System.out.println("Done rendering");
+  }
+  public boolean getRunSetting(){
+    return run;
+  }
+  public void moveBuff(){
+    for(int x = TRAIL-1; x > 0; x--){
+      moves[x].pt.x = moves[x-1].pt.x;
+      moves[x].pt.y = moves[x-1].pt.y;
+    }
+    moves[0].pt.x = mX;
+    moves[0].pt.y = mY;
+  }
+  public void actionTrail(){
+    for(int x = TRAIL-1; x > 0; x--){
+      moves[x].pt.x = moves[x-1].pt.x;
+      moves[x].pt.y = moves[x-1].pt.y;
+    }
+    moves[0].pt.x = mX;
+    moves[0].pt.y = mY;
+  }
+  public void setPoints(int mX,int mY){
+    this.mX = mX;
+    this.mY = mY;
+  }
+  private class MoveBuff{
+    public Point pt;
+    public double alpha;
+
+    public MoveBuff(){
+      pt = new Point();
+    }
+  }
+  public void setRun(boolean value){
+    run = value;
+  }
+}
